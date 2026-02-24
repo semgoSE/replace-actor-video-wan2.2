@@ -13,11 +13,84 @@
 from __future__ import annotations
 
 import argparse
+import subprocess
 import sys
 from pathlib import Path
 
+from preprocess import ensure_unique_path
 from run_preprocessing import run_preprocessing
 from run_generation import run_generation
+
+
+def _get_video_fps(path: Path) -> float | None:
+    """FPS входного видео (ffprobe)."""
+    try:
+        out = subprocess.run(
+            [
+                "ffprobe", "-v", "error", "-select_streams", "v:0",
+                "-show_entries", "stream=r_frame_rate", "-of", "csv=p=0",
+                str(path),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        rate = out.stdout.strip().strip('"')
+        if "/" in rate:
+            num, den = rate.split("/")
+            return float(num) / float(den) if float(den) else None
+        return float(rate)
+    except Exception:
+        return None
+
+
+def _get_video_frame_count(path: Path) -> int | None:
+    """Число кадров во входном видео (ffprobe). Чтобы Refine не менял длительность."""
+    try:
+        out = subprocess.run(
+            [
+                "ffprobe", "-v", "error", "-select_streams", "v:0",
+                "-show_entries", "stream=nb_frames", "-of", "csv=p=0",
+                str(path),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        n = out.stdout.strip()
+        if n and n.isdigit():
+            return int(n)
+        # если nb_frames нет (некоторые контейнеры), пробуем duration * fps
+        out2 = subprocess.run(
+            [
+                "ffprobe", "-v", "error", "-select_streams", "v:0",
+                "-show_entries", "stream=duration,r_frame_rate", "-of", "csv=p=0",
+                str(path),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        parts = out2.stdout.strip().split(",")
+        if len(parts) >= 2:
+            dur, rate = float(parts[0] or 0), parts[1].strip()
+            if "/" in rate:
+                num, den = rate.split("/")
+                fps = float(num) / float(den) if float(den) else 0
+            else:
+                fps = float(rate)
+            if dur > 0 and fps > 0:
+                return int(round(dur * fps))
+    except Exception:
+        pass
+    return None
+
+
+def _frame_num_4n1(n: int) -> int:
+    """Wan2.2 ожидает frame_num в виде 4n+1. Округляем вверх, чтобы не терять кадры."""
+    if n <= 0:
+        return 5
+    return ((n + 2) // 4) * 4 + 1
 
 
 def run_refine(
@@ -55,6 +128,22 @@ def run_refine(
         return 1
 
     save_path.mkdir(parents=True, exist_ok=True)
+    # Чтобы не перезаписывать существующий файл — добавляем _1, _2, ...
+    out_path = (wan22_dir / save_file).resolve() if save_file else (wan22_dir / "refined.mp4").resolve()
+    save_file = ensure_unique_path(out_path).name
+
+    # Сохраняем число кадров и FPS как во входном видео — не терять кадры
+    input_frames = _get_video_frame_count(input_video)
+    frame_num = None
+    if input_frames is not None:
+        frame_num = _frame_num_4n1(input_frames)
+        print(f"Refine: кадров во входном видео {input_frames}, передаём frame_num={frame_num} (4n+1)")
+    # FPS из входного видео, чтобы препроцессинг не передискретизировал и не обрезал кадры
+    input_fps = _get_video_fps(input_video)
+    if input_fps is not None:
+        fps = int(round(input_fps))
+        print(f"Refine: используем FPS входного видео: {fps}")
+
     print("=== Refine (второй проход replace для уменьшения артефактов) ===\n")
 
     ret = run_preprocessing(
@@ -86,6 +175,7 @@ def run_refine(
         sample_steps=sample_steps,
         sample_guide_scale=sample_guide_scale,
         sample_shift=sample_shift,
+        frame_num=frame_num,
         save_file=save_file,
         offload_model=offload_model,
     )

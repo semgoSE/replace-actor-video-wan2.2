@@ -21,6 +21,11 @@ import sys
 import tempfile
 from pathlib import Path
 
+from preprocess import ensure_unique_path
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+OUTPUT_DIR = PROJECT_ROOT / "out"
+
 
 def get_input_fps(path: Path) -> float | None:
     """FPS входного видео через ffprobe."""
@@ -59,7 +64,7 @@ def run_upscale(
     Апскейл через SeedVR2: входное видео → папка → torchrun inference → сборка с аудио.
     """
     input_video = Path(input_video).resolve()
-    output_video = Path(output_video).resolve()
+    output_video = ensure_unique_path(Path(output_video).resolve())
     seedvr_dir = Path(seedvr_dir).resolve()
 
     if not input_video.exists():
@@ -146,7 +151,7 @@ def run_realesrgan_upscale(
     Апскейл через Real-ESRGAN: вызов inference_realesrgan_video.py (видео → папка вывода → копируем файл).
     """
     input_video = Path(input_video).resolve()
-    output_video = Path(output_video).resolve()
+    output_video = ensure_unique_path(Path(output_video).resolve())
     realesrgan_dir = Path(realesrgan_dir).resolve()
 
     if not input_video.exists():
@@ -228,6 +233,12 @@ def main():
     parser.add_argument("--face_enhance", action="store_true", help="[Real-ESRGAN] GFPGAN для лиц")
     parser.add_argument("--fp32", action="store_true", help="[Real-ESRGAN] FP32 вместо FP16")
     args = parser.parse_args()
+
+    # Сохраняем результат в папку out/ в корне проекта
+    output_path = Path(args.output)
+    if not output_path.is_absolute():
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        args.output = OUTPUT_DIR / output_path.name
 
     if args.backend == "realesrgan":
         realesrgan_dir = args.realesrgan_dir or os.environ.get("REALESRGAN_DIR")

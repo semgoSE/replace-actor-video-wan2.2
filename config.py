@@ -30,10 +30,13 @@ class PipelineConfig:
     w_len: int = 1
     h_len: int = 1
 
+    # === Выход: все результаты в папку в корне проекта ===
+    output_dir: Path = Path("out")
+
     # === Этап 2: Generation ===
     refert_num: int = 1
     use_relighting_lora: bool = False
-    output_path: Path = Path("output_wanimate.mp4")
+    output_path: Path = Path("out/output_wanimate.mp4")
     seed: int = 42
     # Сэмплер (если None — используются дефолты Wan2.2 для animate-14B)
     prompt: Optional[str] = None          # дефолт Wan2.2: "视频中的人在做动作"
@@ -49,7 +52,7 @@ class PipelineConfig:
     nproc_per_node: int = 8
 
     def __post_init__(self):
-        for name in ("wan22_dir", "ckpt_dir", "video_path", "refer_path", "save_path", "output_path"):
+        for name in ("wan22_dir", "ckpt_dir", "video_path", "refer_path", "save_path", "output_path", "output_dir"):
             v = getattr(self, name)
             if not isinstance(v, Path):
                 setattr(self, name, Path(v))

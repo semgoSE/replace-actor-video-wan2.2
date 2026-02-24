@@ -127,7 +127,7 @@ def main():
     parser.add_argument("--refer_path", type=Path, required=True, help="Референсное изображение персонажа")
     parser.add_argument("--save_path", type=Path, default=Path("process_results"), help="Папка для результата препроцессинга")
     parser.add_argument("--resolution", type=str, default="1280 720", help="Разрешение: W H (например 1280 720)")
-    parser.add_argument("--fps", type=int, default=16, help="FPS выходных видео препроцессинга (по умолч. 16). -1 = FPS исходного видео.")
+    parser.add_argument("--fps", type=int, default=30, help="FPS выходных видео препроцессинга (по умолч. 30 для полной позы DWPose). -1 = FPS исходного видео.")
     parser.add_argument("--retarget", action="store_true", default=True, help="Режим animate (персонаж повторяет движение)")
     parser.add_argument("--replace", action="store_true", help="Режим replace (замена актёра в видео)")
     parser.add_argument("--use_flux", action="store_true", help="Использовать FLUX в препроцессинге")

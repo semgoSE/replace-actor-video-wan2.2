@@ -17,7 +17,50 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
+import shutil
 from pathlib import Path
+
+from preprocess import ensure_unique_path
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+OUTPUT_DIR = PROJECT_ROOT / "out"
+
+VIDEO_EXTENSIONS = (".mp4", ".avi", ".mov", ".webm")
+
+
+def _get_fps_from_video(path: Path) -> float | None:
+    """FPS видео через ffprobe (r_frame_rate)."""
+    try:
+        out = subprocess.run(
+            [
+                "ffprobe", "-v", "error", "-select_streams", "v:0",
+                "-show_entries", "stream=r_frame_rate", "-of", "csv=p=0",
+                str(path),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        rate = out.stdout.strip().strip('"')
+        if "/" in rate:
+            num, den = rate.split("/")
+            return float(num) / float(den) if float(den) else None
+        return float(rate)
+    except Exception:
+        return None
+
+
+def _get_fps_from_preprocess_folder(src_root_path: Path) -> float | None:
+    """FPS первого видео в папке препроцессинга (чтобы выход Generation совпадал с входом)."""
+    path = Path(src_root_path)
+    if not path.is_dir():
+        return None
+    for f in sorted(path.iterdir()):
+        if f.suffix.lower() in VIDEO_EXTENSIONS:
+            fps = _get_fps_from_video(f)
+            if fps is not None:
+                return fps
+    return None
 
 
 def run_generation(
@@ -39,10 +82,12 @@ def run_generation(
     offload_model: bool | None = None,
     multi_gpu: bool = False,
     nproc_per_node: int = 8,
+    sample_fps: float | None = None,
 ) -> int:
     """
     Запускает generate.py из Wan2.2 (task animate-14B).
     Возвращает код возврата процесса (0 = успех).
+    Если sample_fps не задан, берётся FPS из первого видео в папке препроцессинга.
     """
     generate_py = wan22_dir / "generate.py"
     if not generate_py.exists():
@@ -52,6 +97,17 @@ def run_generation(
         )
     if not src_root_path.exists():
         raise FileNotFoundError(f"Папка с данными препроцессинга не найдена: {src_root_path}")
+
+    # FPS выхода: явный sample_fps или из первого видео в папке препроцессинга
+    if sample_fps is None:
+        sample_fps = _get_fps_from_preprocess_folder(src_root_path)
+        if sample_fps is not None:
+            print(f"Generation: FPS выходного видео задан от входа (препроцессинг): {sample_fps}")
+
+    # Если файл уже есть — сохраняем как _1, _2, ...
+    if save_file:
+        out_full = (wan22_dir / save_file).resolve()
+        save_file = ensure_unique_path(out_full).name
 
     # при cwd=wan22_dir скрипт — просто generate.py
     gen_script = "generate.py"
@@ -84,6 +140,8 @@ def run_generation(
         cmd.append("--replace_flag")
     if use_relighting_lora:
         cmd.append("--use_relighting_lora")
+    if sample_fps is not None:
+        cmd.extend(["--sample_fps", str(sample_fps)])
 
     if multi_gpu:
         cmd = [
@@ -118,14 +176,24 @@ def run_generation(
             cmd.append("--replace_flag")
         if use_relighting_lora:
             cmd.append("--use_relighting_lora")
+        if sample_fps is not None:
+            cmd.extend(["--sample_fps", str(sample_fps)])
 
     print("Этап 2: Generation (Wan2.2 generate.py --task animate-14B)")
     print(" ", " ".join(cmd))
     result = subprocess.run(cmd, cwd=str(wan22_dir))
-    if result.returncode == 0 and output_path:
-        # generate.py пишет вывод в свою папку; можно скопировать в output_path
-        # по умолчанию Wan2.2 пишет в ckpt_dir или текущую папку — см. их README
-        print("Генерация завершена. Проверьте вывод в папке Wan2.2 или в логе выше.")
+    if result.returncode == 0 and save_file:
+        # Копируем результат в папку out/ в корне проекта
+        src = wan22_dir / save_file
+        if not src.exists():
+            src = wan22_dir / "out" / save_file
+        if src.exists():
+            OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+            dest = ensure_unique_path(OUTPUT_DIR / save_file)
+            shutil.copy2(src, dest)
+            print("Генерация завершена. Результат сохранён:", dest)
+        else:
+            print("Генерация завершена. Проверьте вывод в папке Wan2.2 или Wan2.2/out/.")
     return result.returncode
 
 
@@ -144,11 +212,12 @@ def main():
     parser.add_argument("--sample_guide_scale", type=float, default=None, help="CFG / guidance scale (дефолт в Wan2.2 ~2–4.5)")
     parser.add_argument("--sample_shift", type=float, default=None, help="Flow shift (дефолт в Wan2.2 ~3–5)")
     parser.add_argument("--frame_num", type=int, default=None, help="Число кадров (4n+1)")
-    parser.add_argument("--save_file", type=str, default=None, help="Имя выходного файла (иначе Wan2.2 сгенерирует сам)")
+    parser.add_argument("--save_file", type=str, default=None, help="Имя выходного файла (результат также копируется в out/)")
     parser.add_argument("--sample_solver", type=str, default=None, choices=["unipc", "dpm++"], help="Сэмплер: unipc или dpm++")
     parser.add_argument("--no_offload", action="store_true", help="Не выгружать модель на CPU (быстрее, нужно достаточно VRAM ~24GB+)")
     parser.add_argument("--multi_gpu", action="store_true", help="Запуск на нескольких GPU")
     parser.add_argument("--nproc_per_node", type=int, default=8)
+    parser.add_argument("--fps", type=float, default=None, help="FPS выходного видео (по умолчанию — от препроцессинга)")
     args = parser.parse_args()
 
     ret = run_generation(
@@ -170,6 +239,7 @@ def main():
         offload_model=False if args.no_offload else None,
         multi_gpu=args.multi_gpu,
         nproc_per_node=args.nproc_per_node,
+        sample_fps=args.fps,
     )
     sys.exit(ret)
 

@@ -2,6 +2,7 @@
 Утилиты препроцессинга (чистый Python: NumPy/PIL).
 - Загрузка/сохранение изображений и видео
 - Resize (Lanczos)
+- ensure_unique_path: при сохранении не перезаписывать — добавить _1, _2, ...
 Используются при необходимости кастомного препроцессинга; основной пайплайн
 использует официальный preprocess_data.py из Wan2.2 (этап 1).
 """
@@ -10,6 +11,23 @@ from __future__ import annotations
 import math
 from pathlib import Path
 from typing import Optional, Tuple, List, Union
+
+
+def ensure_unique_path(path: Union[str, Path]) -> Path:
+    """Если файл уже существует, возвращает путь с суффиксом _1, _2, ... (не перезаписываем)."""
+    path = Path(path).resolve()
+    if not path.exists():
+        return path
+    stem, suffix = path.stem, path.suffix
+    parent = path.parent
+    n = 1
+    while True:
+        candidate = parent / f"{stem}_{n}{suffix}"
+        if not candidate.exists():
+            return candidate
+        n += 1
+        if n > 10000:
+            return candidate
 
 import numpy as np
 

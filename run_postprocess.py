@@ -25,6 +25,11 @@ import sys
 import tempfile
 from pathlib import Path
 
+from preprocess import ensure_unique_path
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+OUTPUT_DIR = PROJECT_ROOT / "out"
+
 
 def get_input_fps(path: Path) -> float | None:
     """Возвращает FPS входного видео через ffprobe или None."""
@@ -89,7 +94,7 @@ def run_postprocess_rife(
     Постобработка через RIFE: извлекаем кадры -> RIFE 2x -> собираем видео с target_fps.
     """
     input_video = Path(input_video).resolve()
-    output_video = Path(output_video).resolve()
+    output_video = ensure_unique_path(Path(output_video).resolve())
     if not input_video.exists():
         print(f"Ошибка: файл не найден: {input_video}", file=sys.stderr)
         return 1
@@ -194,7 +199,7 @@ def run_postprocess_rife_cuda(
     Нужен клон https://github.com/hzwer/Practical-RIFE и скачанные веса в train_log/.
     """
     input_video = Path(input_video).resolve()
-    output_video = Path(output_video).resolve()
+    output_video = ensure_unique_path(Path(output_video).resolve())
     if not input_video.exists():
         print(f"Ошибка: файл не найден: {input_video}", file=sys.stderr)
         return 1
@@ -254,7 +259,7 @@ def run_postprocess_ffmpeg(
 ) -> int:
     """Fallback: ffmpeg minterpolate (без RIFE, качество хуже)."""
     input_video = Path(input_video).resolve()
-    output_video = Path(output_video).resolve()
+    output_video = ensure_unique_path(Path(output_video).resolve())
     output_video.parent.mkdir(parents=True, exist_ok=True)
     # minterpolate=fps=30:mi_mode=mci (motion compensated)
     cmd = [
@@ -275,7 +280,7 @@ def main():
         description="Постобработка: повышение FPS (RIFE или ffmpeg minterpolate)"
     )
     parser.add_argument("--input", type=Path, required=True, help="Входное видео (например 16 fps)")
-    parser.add_argument("--output", type=Path, required=True, help="Выходное видео (например 30 fps)")
+    parser.add_argument("--output", type=Path, required=True, help="Выходное видео (относительный путь — в out/)")
     parser.add_argument("--target_fps", type=int, default=30, help="Целевой FPS (по умолч. 30)")
     parser.add_argument("--rife_bin", type=Path, default=None, help="Путь к rife-ncnn-vulkan")
     parser.add_argument(
@@ -298,6 +303,13 @@ def main():
     )
     parser.add_argument("--no_audio", action="store_true", help="Не копировать аудио")
     args = parser.parse_args()
+
+    # Сохраняем результат в папку out/ в корне проекта
+    output_path = Path(args.output)
+    if not output_path.is_absolute():
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        output_path = OUTPUT_DIR / output_path.name
+    args.output = output_path
 
     backend = "ffmpeg" if args.fallback_ffmpeg else args.backend
     if backend == "ffmpeg":
