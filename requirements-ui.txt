@@ -1,0 +1,2 @@
+# Для Web-UI (app_ui.py). Установите после requirements.txt.
+gradio>=4.0.0

@@ -1,0 +1,12 @@
+# Practical-RIFE зависимости, совместимые с Python 3.12.
+# Оригинальный requirements.txt тянет numpy<=1.23.5, который не ставится на Py3.12.
+# Сначала: pip install --upgrade pip setuptools wheel
+# Потом:  pip install -r scripts/requirements_practical_rife_py312.txt
+
+numpy>=1.26
+tqdm>=4.35.0
+scikit-video>=1.1.10
+torch>=1.3.0
+opencv-python>=4.1.2
+moviepy>=1.0.3
+torchvision>=0.7.0

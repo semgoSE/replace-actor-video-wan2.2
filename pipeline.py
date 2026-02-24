@@ -32,6 +32,7 @@ def run_pipeline(config: PipelineConfig) -> int:
         refer_path=config.refer_path,
         save_path=config.save_path,
         resolution_area=config.resolution_area,
+        fps=config.fps,
         retarget_flag=config.retarget_flag,
         replace_flag=config.replace_flag,
         use_flux=config.use_flux,
@@ -81,6 +82,7 @@ def main():
     parser.add_argument("--save_path", type=Path, default=Path("process_results"))
     parser.add_argument("--output_path", type=Path, default=Path("output_wanimate.mp4"))
     parser.add_argument("--resolution", type=str, default="1280 720")
+    parser.add_argument("--fps", type=int, default=16, help="FPS препроцессинга (по умолч. 16). -1 = FPS исходного видео.")
     parser.add_argument("--retarget", action="store_true", default=True, help="Animate: персонаж повторяет движение")
     parser.add_argument("--replace", action="store_true", help="Replace: замена актёра в видео")
     parser.add_argument("--use_flux", action="store_true")

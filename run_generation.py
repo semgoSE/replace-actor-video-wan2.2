@@ -35,6 +35,7 @@ def run_generation(
     sample_shift: float | None = None,
     frame_num: int | None = None,
     save_file: str | None = None,
+    sample_solver: str | None = None,
     offload_model: bool | None = None,
     multi_gpu: bool = False,
     nproc_per_node: int = 8,
@@ -75,6 +76,8 @@ def run_generation(
         cmd.extend(["--frame_num", str(frame_num)])
     if save_file:
         cmd.extend(["--save_file", str(save_file)])
+    if sample_solver is not None:
+        cmd.extend(["--sample_solver", sample_solver])
     if offload_model is not None:
         cmd.extend(["--offload_model", "True" if offload_model else "False"])
     if replace_flag:
@@ -107,6 +110,8 @@ def run_generation(
             cmd.extend(["--frame_num", str(frame_num)])
         if save_file:
             cmd.extend(["--save_file", str(save_file)])
+        if sample_solver is not None:
+            cmd.extend(["--sample_solver", sample_solver])
         if offload_model is not None:
             cmd.extend(["--offload_model", "True" if offload_model else "False"])
         if replace_flag:
@@ -140,6 +145,7 @@ def main():
     parser.add_argument("--sample_shift", type=float, default=None, help="Flow shift (дефолт в Wan2.2 ~3–5)")
     parser.add_argument("--frame_num", type=int, default=None, help="Число кадров (4n+1)")
     parser.add_argument("--save_file", type=str, default=None, help="Имя выходного файла (иначе Wan2.2 сгенерирует сам)")
+    parser.add_argument("--sample_solver", type=str, default=None, choices=["unipc", "dpm++"], help="Сэмплер: unipc или dpm++")
     parser.add_argument("--no_offload", action="store_true", help="Не выгружать модель на CPU (быстрее, нужно достаточно VRAM ~24GB+)")
     parser.add_argument("--multi_gpu", action="store_true", help="Запуск на нескольких GPU")
     parser.add_argument("--nproc_per_node", type=int, default=8)
@@ -160,6 +166,7 @@ def main():
         sample_shift=args.sample_shift,
         frame_num=args.frame_num,
         save_file=args.save_file,
+        sample_solver=args.sample_solver,
         offload_model=False if args.no_offload else None,
         multi_gpu=args.multi_gpu,
         nproc_per_node=args.nproc_per_node,

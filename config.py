@@ -20,6 +20,7 @@ class PipelineConfig:
     refer_path: Path = Path("reference.jpg")       # референсное фото персонажа
     save_path: Path = Path("process_results")      # папка результата препроцессинга
     resolution_area: tuple = (1280, 720)           # (width, height) или площадь
+    fps: int = 16                                  # FPS выходных видео препроцессинга; -1 = FPS исходного видео
     retarget_flag: bool = True                      # True = animate (персонаж повторяет движение)
     replace_flag: bool = False                      # True = replace (замена актёра в видео)
     use_flux: bool = False                         # опция препроцессинга

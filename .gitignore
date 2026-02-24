@@ -34,6 +34,10 @@ env/
 *.bin
 Wan2.2/
 Wan2.2-Animate-14B/
+SeedVR/
+Real-ESRGAN/
+Practical-RIFE/
+sam-2/
 process_results/
 process_checkpoint/
 checkpoints/
@@ -52,6 +56,8 @@ output/*.mp4
 output/*.avi
 out/
 output/
+process_results/
+refine_process/
 
 # IDE
 .idea/
@@ -74,5 +80,9 @@ Thumbs.db
 .cache/
 text_embed_cache/
 
+# Jupyter
+.ipynb_checkpoints/
+
 
 /inputs/
+/preprocess/

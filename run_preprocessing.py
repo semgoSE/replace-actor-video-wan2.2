@@ -58,6 +58,7 @@ def run_preprocessing(
     refer_path: Path,
     save_path: Path,
     resolution_area: tuple = (1280, 720),
+    fps: int | None = None,
     retarget_flag: bool = True,
     replace_flag: bool = False,
     use_flux: bool = False,
@@ -100,6 +101,8 @@ def run_preprocessing(
         "--save_path", str(save_path.resolve()),
         "--resolution_area", str(w), str(h),
     ]
+    if fps is not None:
+        cmd.extend(["--fps", str(fps)])
     if retarget_flag:
         cmd.append("--retarget_flag")
     if replace_flag:
@@ -124,6 +127,7 @@ def main():
     parser.add_argument("--refer_path", type=Path, required=True, help="Референсное изображение персонажа")
     parser.add_argument("--save_path", type=Path, default=Path("process_results"), help="Папка для результата препроцессинга")
     parser.add_argument("--resolution", type=str, default="1280 720", help="Разрешение: W H (например 1280 720)")
+    parser.add_argument("--fps", type=int, default=16, help="FPS выходных видео препроцессинга (по умолч. 16). -1 = FPS исходного видео.")
     parser.add_argument("--retarget", action="store_true", default=True, help="Режим animate (персонаж повторяет движение)")
     parser.add_argument("--replace", action="store_true", help="Режим replace (замена актёра в видео)")
     parser.add_argument("--use_flux", action="store_true", help="Использовать FLUX в препроцессинге")
@@ -141,6 +145,7 @@ def main():
         refer_path=args.refer_path,
         save_path=args.save_path,
         resolution_area=resolution_area,
+        fps=args.fps,
         retarget_flag=args.retarget and not args.replace,
         replace_flag=args.replace,
         use_flux=args.use_flux,
