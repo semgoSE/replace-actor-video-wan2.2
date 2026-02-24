@@ -29,6 +29,13 @@ def run_generation(
     replace_flag: bool = False,
     use_relighting_lora: bool = False,
     seed: int = 42,
+    prompt: str | None = None,
+    sample_steps: int | None = None,
+    sample_guide_scale: float | None = None,
+    sample_shift: float | None = None,
+    frame_num: int | None = None,
+    save_file: str | None = None,
+    offload_model: bool | None = None,
     multi_gpu: bool = False,
     nproc_per_node: int = 8,
 ) -> int:
@@ -45,15 +52,31 @@ def run_generation(
     if not src_root_path.exists():
         raise FileNotFoundError(f"Папка с данными препроцессинга не найдена: {src_root_path}")
 
+    # при cwd=wan22_dir скрипт — просто generate.py
+    gen_script = "generate.py"
     cmd = [
         sys.executable,
-        str(generate_py),
+        gen_script,
         "--task", "animate-14B",
         "--ckpt_dir", str(ckpt_dir.resolve()),
         "--src_root_path", str(src_root_path.resolve()),
         "--refert_num", str(refert_num),
-        "--seed", str(seed),
+        "--base_seed", str(seed),
     ]
+    if prompt is not None:
+        cmd.extend(["--prompt", prompt])
+    if sample_steps is not None:
+        cmd.extend(["--sample_steps", str(sample_steps)])
+    if sample_guide_scale is not None:
+        cmd.extend(["--sample_guide_scale", str(sample_guide_scale)])
+    if sample_shift is not None:
+        cmd.extend(["--sample_shift", str(sample_shift)])
+    if frame_num is not None:
+        cmd.extend(["--frame_num", str(frame_num)])
+    if save_file:
+        cmd.extend(["--save_file", str(save_file)])
+    if offload_model is not None:
+        cmd.extend(["--offload_model", "True" if offload_model else "False"])
     if replace_flag:
         cmd.append("--replace_flag")
     if use_relighting_lora:
@@ -64,19 +87,32 @@ def run_generation(
             sys.executable, "-m", "torch.distributed.run",
             "--nnodes", "1",
             "--nproc_per_node", str(nproc_per_node),
-            str(generate_py),
+            gen_script,
             "--task", "animate-14B",
             "--ckpt_dir", str(ckpt_dir.resolve()),
             "--src_root_path", str(src_root_path.resolve()),
             "--refert_num", str(refert_num),
+            "--base_seed", str(seed),
             "--dit_fsdp", "--t5_fsdp", "--ulysses_size", str(nproc_per_node),
         ]
+        if prompt is not None:
+            cmd.extend(["--prompt", prompt])
+        if sample_steps is not None:
+            cmd.extend(["--sample_steps", str(sample_steps)])
+        if sample_guide_scale is not None:
+            cmd.extend(["--sample_guide_scale", str(sample_guide_scale)])
+        if sample_shift is not None:
+            cmd.extend(["--sample_shift", str(sample_shift)])
+        if frame_num is not None:
+            cmd.extend(["--frame_num", str(frame_num)])
+        if save_file:
+            cmd.extend(["--save_file", str(save_file)])
+        if offload_model is not None:
+            cmd.extend(["--offload_model", "True" if offload_model else "False"])
         if replace_flag:
             cmd.append("--replace_flag")
         if use_relighting_lora:
             cmd.append("--use_relighting_lora")
-        # seed может не поддерживаться в distribute — при необходимости добавьте
-        cmd.extend(["--seed", str(seed)])
 
     print("Этап 2: Generation (Wan2.2 generate.py --task animate-14B)")
     print(" ", " ".join(cmd))
@@ -98,6 +134,13 @@ def main():
     parser.add_argument("--replace", action="store_true", help="Режим replace")
     parser.add_argument("--use_relighting_lora", action="store_true")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--prompt", type=str, default=None, help="Текстовый промпт (по умолчанию дефолт Wan2.2: 视频中的人在做动作)")
+    parser.add_argument("--sample_steps", type=int, default=None, help="Шаги сэмплинга (дефолт в Wan2.2 для animate ~30–40)")
+    parser.add_argument("--sample_guide_scale", type=float, default=None, help="CFG / guidance scale (дефолт в Wan2.2 ~2–4.5)")
+    parser.add_argument("--sample_shift", type=float, default=None, help="Flow shift (дефолт в Wan2.2 ~3–5)")
+    parser.add_argument("--frame_num", type=int, default=None, help="Число кадров (4n+1)")
+    parser.add_argument("--save_file", type=str, default=None, help="Имя выходного файла (иначе Wan2.2 сгенерирует сам)")
+    parser.add_argument("--no_offload", action="store_true", help="Не выгружать модель на CPU (быстрее, нужно достаточно VRAM ~24GB+)")
     parser.add_argument("--multi_gpu", action="store_true", help="Запуск на нескольких GPU")
     parser.add_argument("--nproc_per_node", type=int, default=8)
     args = parser.parse_args()
@@ -111,6 +154,13 @@ def main():
         replace_flag=args.replace,
         use_relighting_lora=args.use_relighting_lora,
         seed=args.seed,
+        prompt=args.prompt,
+        sample_steps=args.sample_steps,
+        sample_guide_scale=args.sample_guide_scale,
+        sample_shift=args.sample_shift,
+        frame_num=args.frame_num,
+        save_file=args.save_file,
+        offload_model=False if args.no_offload else None,
         multi_gpu=args.multi_gpu,
         nproc_per_node=args.nproc_per_node,
     )

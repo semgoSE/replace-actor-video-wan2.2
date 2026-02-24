@@ -34,6 +34,15 @@ class PipelineConfig:
     use_relighting_lora: bool = False
     output_path: Path = Path("output_wanimate.mp4")
     seed: int = 42
+    # Сэмплер (если None — используются дефолты Wan2.2 для animate-14B)
+    prompt: Optional[str] = None          # дефолт Wan2.2: "视频中的人在做动作"
+    sample_steps: Optional[int] = None   # обычно 30–40
+    sample_guide_scale: Optional[float] = None  # CFG, обычно 2–4.5
+    sample_shift: Optional[float] = None  # flow shift, обычно 3–5
+    frame_num: Optional[int] = None      # кадры (4n+1)
+    save_file: Optional[str] = None      # имя файла вывода
+    # Скорость: False = не выгружать модель на CPU (быстрее, нужно ~24GB+ VRAM)
+    offload_model: Optional[bool] = None
     # Multi-GPU (опционально)
     multi_gpu: bool = False
     nproc_per_node: int = 8

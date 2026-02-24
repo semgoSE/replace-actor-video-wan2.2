@@ -54,6 +54,13 @@ def run_pipeline(config: PipelineConfig) -> int:
         replace_flag=config.replace_flag,
         use_relighting_lora=config.use_relighting_lora,
         seed=config.seed,
+        prompt=config.prompt,
+        sample_steps=config.sample_steps,
+        sample_guide_scale=config.sample_guide_scale,
+        sample_shift=config.sample_shift,
+        frame_num=config.frame_num,
+        save_file=config.save_file,
+        offload_model=config.offload_model,
         multi_gpu=config.multi_gpu,
         nproc_per_node=config.nproc_per_node,
     )
@@ -79,6 +86,13 @@ def main():
     parser.add_argument("--use_flux", action="store_true")
     parser.add_argument("--use_relighting_lora", action="store_true")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--prompt", type=str, default=None)
+    parser.add_argument("--sample_steps", type=int, default=None)
+    parser.add_argument("--sample_guide_scale", type=float, default=None)
+    parser.add_argument("--sample_shift", type=float, default=None)
+    parser.add_argument("--frame_num", type=int, default=None)
+    parser.add_argument("--save_file", type=str, default=None)
+    parser.add_argument("--no_offload", action="store_true", help="Макс. скорость: модель в VRAM (~24GB+)")
     parser.add_argument("--multi_gpu", action="store_true")
     parser.add_argument("--nproc_per_node", type=int, default=8)
     args = parser.parse_args()
@@ -99,6 +113,13 @@ def main():
         use_flux=args.use_flux,
         use_relighting_lora=args.use_relighting_lora,
         seed=args.seed,
+        prompt=args.prompt,
+        sample_steps=args.sample_steps,
+        sample_guide_scale=args.sample_guide_scale,
+        sample_shift=args.sample_shift,
+        frame_num=args.frame_num,
+        save_file=args.save_file,
+        offload_model=False if args.no_offload else None,
         multi_gpu=args.multi_gpu,
         nproc_per_node=args.nproc_per_node,
     )

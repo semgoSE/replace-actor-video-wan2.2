@@ -25,6 +25,22 @@ import sys
 from pathlib import Path
 
 
+def _normalize_ref_png(save_path: Path) -> None:
+    """Пересохраняет src_ref.png через PIL, чтобы cv2.imread в Wan2.2 не падал (libpng/zlib)."""
+    ref_png = save_path / "src_ref.png"
+    if not ref_png.exists():
+        return
+    try:
+        from PIL import Image
+    except ImportError:
+        return
+    try:
+        img = Image.open(ref_png).convert("RGB")
+        img.save(ref_png, "PNG", compress_level=6)
+    except Exception:
+        pass
+
+
 def find_wan22_preprocess(wan22_dir: Path) -> Path:
     script = wan22_dir / "wan" / "modules" / "animate" / "preprocess" / "preprocess_data.py"
     if not script.exists():
@@ -69,10 +85,16 @@ def run_preprocessing(
     save_path.mkdir(parents=True, exist_ok=True)
     w, h = resolution_area[0], resolution_area[1]
 
+    # Путь к скрипту относительно wan22_dir, т.к. subprocess запускается с cwd=wan22_dir
+    wan22_resolved = Path(wan22_dir).resolve()
+    try:
+        script_run = script.resolve().relative_to(wan22_resolved)
+    except ValueError:
+        script_run = script
     cmd = [
         sys.executable,
-        str(script),
-        "--ckpt_path", str(process_ckpt),
+        str(script_run),
+        "--ckpt_path", str(process_ckpt.resolve()),
         "--video_path", str(video_path.resolve()),
         "--refer_path", str(refer_path.resolve()),
         "--save_path", str(save_path.resolve()),
@@ -89,6 +111,8 @@ def run_preprocessing(
     print("Этап 1: Preprocessing (Wan2.2 preprocess_data.py)")
     print(" ", " ".join(cmd))
     result = subprocess.run(cmd, cwd=str(wan22_dir))
+    if result.returncode == 0:
+        _normalize_ref_png(save_path)
     return result.returncode
 
 
