@@ -1,0 +1,78 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+
+# Модели и тяжёлые данные (не коммитить)
+*.safetensors
+*.pt
+*.pth
+*.onnx
+*.bin
+Wan2.2/
+Wan2.2-Animate-14B/
+process_results/
+process_checkpoint/
+checkpoints/
+models/
+loras/
+vae/
+clip_vision/
+text_encoders/
+
+# Результаты пайплайна
+output*.mp4
+output*.avi
+out/*.mp4
+out/*.avi
+output/*.mp4
+output/*.avi
+out/
+output/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Локальные настройки
+.env
+.env.local
+*.local
+
+# Логи и кэш
+*.log
+.cache/
+text_embed_cache/
+
+
+/inputs/
